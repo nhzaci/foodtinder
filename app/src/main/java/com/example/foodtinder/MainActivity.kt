@@ -14,7 +14,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun searchPostalCode(view: View) {
-        val intent = Intent(this, Main2Activity::class.java)
+        val intent = Intent(this, MapsActivity::class.java)
         //val postalCodeInput = findViewById(R.id.postalCodeInput)
         //having issues putting extra in kotlin...
         //intent.putExtra("postalCode", postalCodeInput.getText())
