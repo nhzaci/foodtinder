@@ -7,6 +7,7 @@ import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
@@ -16,6 +17,7 @@ import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -38,13 +40,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
         if (requestCode == 1) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                     locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
                 }
             }
+        }
+    }
+
+    public void centerMapOnLocation(Location location, String title) {
+        // If location not null, shifts camera to location and adds marker with a title on it
+        if (location != null) {
+            LatLng userLocation = new LatLng(location.getLatitude(), location.getLongitude());
+            mMap.clear();
+            mMap.addMarker(new MarkerOptions().position(userLocation).title(title));
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(userLocation, 13.0f));
         }
     }
 
@@ -59,19 +70,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         assert mapFragment != null;
         mapFragment.getMapAsync(this);
 
-
+        changeStatusBarColour(R.color.colorPrimaryDark); // Change status bar to match our top bar colour
     }
 
+    public void changeStatusBarColour(int colourCode) {
+        getWindow().setStatusBarColor(ContextCompat.getColor(getApplicationContext(), colourCode));
+    }
 
-    /**
-     * Manipulates the map once available.
-     * This callback is triggered when the map is ready to be used.
-     * This is where we can add markers or lines, add listeners or move the camera. In this case,
-     * we just add a marker near Sydney, Australia.
-     * If Google Play services is not installed on the device, the user will be prompted to install
-     * it inside the SupportMapFragment. This method will only be triggered once the user has
-     * installed Google Play services and returned to the app.
-     */
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
@@ -80,28 +85,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         locationListener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
-                mMap.clear();
-                // get user's location in latlng form
-                LatLng userLocation = new LatLng(location.getLatitude(), location.getLongitude());
-                // adding marker to user's current location
-                mMap.addMarker(new MarkerOptions().position(userLocation).title("Your Location"));
-                // moving camera to known location
-                mMap.moveCamera(CameraUpdateFactory.newLatLng(userLocation));
-
-                Geocoder geocoder = new Geocoder(getApplicationContext(), Locale.getDefault());
-                try {
-                    List<Address> listAddresses = geocoder.getFromLocation(userLocation.latitude, userLocation.longitude, 1);
-                    if (listAddresses != null && listAddresses.size() > 0) {
-                        String address = "";
-                        if (listAddresses.get(0).getAddressLine(0) != null) {
-                            //Can probably output this to an inputText / textView
-                            address = listAddresses.get(0).getAddressLine(0);
-                        }
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-
+                centerMapOnLocation(location, "Your location");
             }
 
             @Override
@@ -120,22 +104,24 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         };
 
-        if (Build.VERSION.SDK_INT < 23) {
-            // if sdk < 23, no need to check or ask for permissions
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            //If permission not granted, ask for permission
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
         } else {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-            } else {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
-                //get last known location
-                Location lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                mMap.clear();
-                LatLng userLocation = new LatLng(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
-                mMap.addMarker(new MarkerOptions().position(userLocation).title("Your Location"));
-                mMap.moveCamera(CameraUpdateFactory.newLatLng(userLocation));
-            }
+            //Else, start requesting for location and temporarily set last known location
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+            Location lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            centerMapOnLocation(lastKnownLocation, "Your Location");
         }
+    }
 
+    public void getMyLocation(View view) {
+        // To recalibrate location of user on click of the floating button
+    }
+
+    public void findLocationEntered(View view) {
+        // To search Google API for the location entered into the address bar on enter press
+        // Currently just a placeholder
+        startActivity(new Intent(getApplicationContext(), SelectionActivity.class));
     }
 }
